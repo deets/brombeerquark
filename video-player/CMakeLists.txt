@@ -36,6 +36,7 @@ target_link_libraries(
 
 add_executable(simple-videoplayer
    src/main.cc
+   src/connector.cc
 )
 
 
@@ -55,6 +56,7 @@ target_link_libraries(
 	simple-videoplayer
 	ilclient
 	boost_program_options	
+	nanomsg
 )
 
 

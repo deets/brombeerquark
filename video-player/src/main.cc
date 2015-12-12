@@ -1,40 +1,16 @@
-/*
-Copyright (c) 2012, Broadcom Europe Ltd
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of the copyright holder nor the
-      names of its contributors may be used to endorse or promote products
-      derived from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-
-// Video deocode demo using OpenMAX IL though the ilcient helper library
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "connector.hh"
 
 #include "bcm_host.h"
 #include "ilclient.h"
 
-static int video_decode_test(char *filename)
+#include <boost/program_options.hpp>
+
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int play_video(Connector& connector, const std::string& filename)
 {
    OMX_VIDEO_PARAM_PORTFORMATTYPE format;
    OMX_TIME_CONFIG_CLOCKSTATETYPE cstate;
@@ -48,8 +24,7 @@ static int video_decode_test(char *filename)
 
    memset(list, 0, sizeof(list));
    memset(tunnel, 0, sizeof(tunnel));
-
-   if((in = fopen(filename, "rb")) == NULL)
+   if((in = fopen(filename.c_str(), "rb")) == NULL)
       return -2;
 
    if((client = ilclient_init()) == NULL)
@@ -157,7 +132,7 @@ static int video_decode_test(char *filename)
 
             ilclient_change_component_state(video_render, OMX_StateExecuting);
          }
-         if(!data_len)
+         if(!data_len || !connector.running())
             break;
 
          buf->nFilledLen = data_len;
@@ -213,14 +188,35 @@ static int video_decode_test(char *filename)
    return status;
 }
 
+namespace po = boost::program_options;
+
 int main (int argc, char **argv)
 {
-   if (argc < 2) {
-      printf("Usage: %s <filename>\n", argv[0]);
-      exit(1);
-   }
+  const auto OPT_HELP = "help";
+  const auto OPT_URI = "uri";
+  const auto OPT_VIDEO = "video";
+
+  std::string uri;
+  std::string video;
+
+  po::options_description desc("Allowed options");
+  desc.add_options()
+    (OPT_HELP, "produce help message")
+    (OPT_URI, po::value<std::string>(&uri), "nanomsg uri to serve data on")
+    (OPT_VIDEO, po::value<std::string>(&video), "the initial file to run")
+    ;
+
+  po::variables_map vm;
+  po::store(po::parse_command_line(argc, argv, desc), vm);
+  po::notify(vm);
+
+  if(vm.count(OPT_HELP) || !vm.count(OPT_VIDEO) || !vm.count(OPT_URI)) {
+    std::cout << desc << "\n";
+    return 1;
+  }
    bcm_host_init();
-   return video_decode_test(argv[1]);
+   Connector connector(uri);
+   return play_video(connector, video);
 }
 
 
