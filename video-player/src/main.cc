@@ -66,17 +66,21 @@ static int video_decode_test(char *filename)
    }
 
    // create video_decode
-   if(ilclient_create_component(client, &video_decode, "video_decode", ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS) != 0)
+   if(ilclient_create_component(
+	  client, 
+	  &video_decode, 
+	  const_cast<char*>("video_decode"), 
+	  static_cast<ILCLIENT_CREATE_FLAGS_T>(ILCLIENT_DISABLE_ALL_PORTS | ILCLIENT_ENABLE_INPUT_BUFFERS)) != 0)
       status = -14;
    list[0] = video_decode;
 
    // create video_render
-   if(status == 0 && ilclient_create_component(client, &video_render, "video_render", ILCLIENT_DISABLE_ALL_PORTS) != 0)
+   if(status == 0 && ilclient_create_component(client, &video_render, const_cast<char*>("video_render"), ILCLIENT_DISABLE_ALL_PORTS) != 0)
       status = -14;
    list[1] = video_render;
 
    // create clock
-   if(status == 0 && ilclient_create_component(client, &clock, "clock", ILCLIENT_DISABLE_ALL_PORTS) != 0)
+   if(status == 0 && ilclient_create_component(client, &clock, const_cast<char*>("clock"), ILCLIENT_DISABLE_ALL_PORTS) != 0)
       status = -14;
    list[2] = clock;
 
@@ -89,7 +93,7 @@ static int video_decode_test(char *filename)
       status = -13;
 
    // create video_scheduler
-   if(status == 0 && ilclient_create_component(client, &video_scheduler, "video_scheduler", ILCLIENT_DISABLE_ALL_PORTS) != 0)
+   if(status == 0 && ilclient_create_component(client, &video_scheduler, const_cast<char*>("video_scheduler"), ILCLIENT_DISABLE_ALL_PORTS) != 0)
       status = -14;
    list[3] = video_scheduler;
 
