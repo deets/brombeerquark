@@ -132,7 +132,7 @@ static int play_video(Connector& connector, const std::string& filename)
 
             ilclient_change_component_state(video_render, OMX_StateExecuting);
          }
-         if(!data_len || !connector.running())
+         if(!data_len)
             break;
 
          buf->nFilledLen = data_len;

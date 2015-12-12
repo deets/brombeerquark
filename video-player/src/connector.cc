@@ -20,6 +20,7 @@ Connector::Connector(const std::string& uri)
   : _socket(-1)
   , _endpoint(-1)
   , _running(true)
+  , _pollTimeout(100)
 {
   _socket = nn_socket(AF_SP, NN_PAIR);
   raise_on_error(_socket == -1);
@@ -34,6 +35,7 @@ Connector::Connector(const std::string& uri)
 
 Connector::~Connector()
 {
+  _running = false;
   _listenThread.join();
   if(_endpoint != -1) {
     nn_shutdown(_socket, _endpoint);
@@ -50,10 +52,21 @@ bool Connector::running() const {
 }
 
 void Connector::work() {
-  void *buf = NULL;
-  auto len = nn_recv(_socket, &buf, NN_MSG, 0);
-  _running = false;
-  if(len > 0) {
-    nn_freemsg(buf);
+  struct nn_pollfd pollData;
+  pollData.fd = _socket;
+  pollData.events = NN_POLLIN | NN_POLLOUT;
+
+  while(_running) {
+    pollData.revents = 0;
+    auto rc = nn_poll(&pollData, 1, _pollTimeout);
+    raise_on_error(rc == -1);
+    if(pollData.revents & NN_POLLIN) {
+      void *buf = NULL;
+      auto len = nn_recv(_socket, &buf, NN_MSG, 0);
+      _running = false;
+      if(len > 0) {
+	nn_freemsg(buf);
+      }
+     }
   }
 }

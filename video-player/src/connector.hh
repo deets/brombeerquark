@@ -22,4 +22,5 @@ private:
 
   std::thread _listenThread;
 
+  int _pollTimeout;
 };
