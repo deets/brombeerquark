@@ -11,7 +11,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int play_video(Connector& connector, const std::string& filename)
+namespace {
+
+bool check_messages(Connector& connector) {
+  auto message = connector.message();
+  if(message) {
+    switch((*message).type) {
+    case ControlMessage::Type::QUIT:
+      LOG("MESSAGEQUIT");
+      return false;
+    default:
+      break;
+    }
+  }
+  return true;
+}
+
+int play_video(Connector& connector, const std::string& filename)
 {
    OMX_VIDEO_PARAM_PORTFORMATTYPE format;
    OMX_TIME_CONFIG_CLOCKSTATETYPE cstate;
@@ -107,17 +123,7 @@ static int play_video(Connector& connector, const std::string& filename)
       bool running = true;
       while(running && (buf = ilclient_get_input_buffer(video_decode, 130, 1)) != NULL)
       {
-	auto message = connector.message();
-	if(message) {
-	  switch((*message).type) {
-	  case ControlMessage::Type::QUIT:
-	    LOG("MESSAGEQUIT");
-	    running = false;
-	    break;
-	  default:
-	    break;
-	  }
-	}
+	running = check_messages(connector);
          // feed data and wait until we get port settings changed
          unsigned char *dest = buf->pBuffer;
 	 LOG("READ_DATA");
@@ -181,8 +187,12 @@ static int play_video(Connector& connector, const std::string& filename)
 
 	// wait for EOS from render
       LOG("BEFOREWAIT");
-      ilclient_wait_for_event(video_render, OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
-                              ILCLIENT_BUFFER_FLAG_EOS, 10000);
+      while(running && ilclient_wait_for_event(video_render, OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
+                              ILCLIENT_BUFFER_FLAG_EOS, 100) != 0)
+	{
+	  running = check_messages(connector);
+	  LOG("DURINGWAIT");
+	}
 
       // need to flush the renderer to allow video_decode to disable its input port
       LOG("AFTERWAIT");
@@ -208,6 +218,7 @@ static int play_video(Connector& connector, const std::string& filename)
    ilclient_destroy(client);
    return status;
 }
+} // anonymous namespace
 
 namespace po = boost::program_options;
 
