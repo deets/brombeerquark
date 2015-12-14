@@ -1,3 +1,4 @@
+#include "log.hh"
 #include "connector.hh"
 
 #include "bcm_host.h"
@@ -91,6 +92,7 @@ static int play_video(Connector& connector, const std::string& filename)
    format.nPortIndex = 130;
    format.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
+   LOG("BEGIN");
    if(status == 0 &&
       OMX_SetParameter(ILC_GET_HANDLE(video_decode), OMX_IndexParamVideoPortFormat, &format) == OMX_ErrorNone &&
       ilclient_enable_port_buffers(video_decode, 130, NULL, NULL, NULL) == 0)
@@ -101,11 +103,24 @@ static int play_video(Connector& connector, const std::string& filename)
 
       ilclient_change_component_state(video_decode, OMX_StateExecuting);
 
-      while((buf = ilclient_get_input_buffer(video_decode, 130, 1)) != NULL)
+      LOG("RUNNING");
+      bool running = true;
+      while(running && (buf = ilclient_get_input_buffer(video_decode, 130, 1)) != NULL)
       {
+	auto message = connector.message();
+	if(message) {
+	  switch((*message).type) {
+	  case ControlMessage::Type::QUIT:
+	    LOG("MESSAGEQUIT");
+	    running = false;
+	    break;
+	  default:
+	    break;
+	  }
+	}
          // feed data and wait until we get port settings changed
          unsigned char *dest = buf->pBuffer;
-
+	 LOG("READ_DATA");
          data_len += fread(dest, 1, buf->nAllocLen-data_len, in);
 
          if(port_settings_changed == 0 &&
@@ -113,6 +128,7 @@ static int play_video(Connector& connector, const std::string& filename)
              (data_len == 0 && ilclient_wait_for_event(video_decode, OMX_EventPortSettingsChanged, 131, 0, 0, 1,
                                                        ILCLIENT_EVENT_ERROR | ILCLIENT_PARAMETER_CHANGED, 10000) == 0)))
          {
+	   LOG("PORT_SETTINGS_CHANGED");
             port_settings_changed = 1;
 
             if(ilclient_setup_tunnel(tunnel, 0, 0) != 0)
@@ -132,8 +148,11 @@ static int play_video(Connector& connector, const std::string& filename)
 
             ilclient_change_component_state(video_render, OMX_StateExecuting);
          }
-         if(!data_len)
+	 
+         if(!data_len || !running) {
+	   LOG("!DATA_LEN || !RUNNING");
             break;
+         }
 
          buf->nFilledLen = data_len;
          data_len = 0;
@@ -153,20 +172,22 @@ static int play_video(Connector& connector, const std::string& filename)
             break;
          }
       }
-
+      LOG("AFTERRUNNING");
       buf->nFilledLen = 0;
       buf->nFlags = OMX_BUFFERFLAG_TIME_UNKNOWN | OMX_BUFFERFLAG_EOS;
 
       if(OMX_EmptyThisBuffer(ILC_GET_HANDLE(video_decode), buf) != OMX_ErrorNone)
          status = -20;
 
-      // wait for EOS from render
+	// wait for EOS from render
+      LOG("BEFOREWAIT");
       ilclient_wait_for_event(video_render, OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
                               ILCLIENT_BUFFER_FLAG_EOS, 10000);
 
       // need to flush the renderer to allow video_decode to disable its input port
+      LOG("AFTERWAIT");
       ilclient_flush_tunnels(tunnel, 0);
-
+      LOG("TUNNELSFLUSHED");
    }
 
    fclose(in);
@@ -214,9 +235,11 @@ int main (int argc, char **argv)
     std::cout << desc << "\n";
     return 1;
   }
-   bcm_host_init();
-   Connector connector(uri);
-   return play_video(connector, video);
+
+  setupLogging();
+  bcm_host_init();
+  Connector connector(uri);
+  return play_video(connector, video);
 }
 
 

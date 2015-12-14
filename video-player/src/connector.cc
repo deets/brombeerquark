@@ -47,8 +47,19 @@ Connector::~Connector()
   }
 }
 
-bool Connector::running() const {
-  return _running;
+boost::optional<ControlMessage> Connector::message() {
+  std::lock_guard<std::mutex> lock(_messageMutex);
+  boost::optional<ControlMessage> result;
+  if(_message) {
+    result = _message;
+    _message = boost::none;
+  }
+  return result;
+}
+
+void Connector::setMessage(const ControlMessage& message) {
+  std::lock_guard<std::mutex> lock(_messageMutex);
+  _message = message;
 }
 
 void Connector::work() {
@@ -65,8 +76,13 @@ void Connector::work() {
       auto len = nn_recv(_socket, &buf, NN_MSG, 0);
       _running = false;
       if(len > 0) {
+
+	ControlMessage message;
+	message.type = ControlMessage::Type::QUIT;
+	setMessage(message);
+
 	nn_freemsg(buf);
       }
-     }
+    }
   }
 }

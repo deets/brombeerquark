@@ -1,8 +1,13 @@
 #pragma once
 
+#include "messages.hh"
+
+#include <boost/optional.hpp>
+
 #include <string>
 #include <thread>
 #include <atomic>
+#include <mutex>
 
 class Connector {
 
@@ -10,11 +15,12 @@ public:
   Connector(const std::string& uri);
   ~Connector();
 
-  bool running() const;
+  boost::optional<ControlMessage> message();
 
 private:
 
   void work();
+  void setMessage(const ControlMessage& message);
 
   int _socket;
   int _endpoint;
@@ -23,4 +29,7 @@ private:
   std::thread _listenThread;
 
   int _pollTimeout;
+
+  boost::optional<ControlMessage> _message;
+  std::mutex _messageMutex;
 };
