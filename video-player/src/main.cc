@@ -13,10 +13,23 @@
 #include <string.h>
 
 
-void play_video(Connector& connector, const std::string& filename)
+void play_video(Connector& connector, std::string filename)
 {
-  Player player;
-  player.play(filename, connector);
+  while(true) {
+    boost::optional<ControlMessage> message;
+    {
+      Player player;
+      message = player.play(filename, connector);
+    }
+    LOG(message ? "GOTMESSAGE" : "NOMESSAGE");
+    if(message && (*message).type == ControlMessage::Type::PLAY) {
+      LOG("PLAY");
+      LOG((*message).payload.c_str());
+      filename = (*message).payload;
+    } else {
+      break;
+    }
+  }
 } // anonymous namespace
 
 namespace po = boost::program_options;

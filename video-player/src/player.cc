@@ -3,22 +3,9 @@
 
 #include <exception>
 #include <sstream>
+#include <fstream>
 
 namespace {
-
-bool check_messages(Connector& connector) {
-  auto message = connector.message();
-  if(message) {
-    switch((*message).type) {
-    case ControlMessage::Type::QUIT:
-      LOG("MESSAGEQUIT");
-      return false;
-    default:
-      break;
-    }
-  }
-  return true;
-}
 
 template<typename A>
 std::string formatMessage(std::stringstream& ss, A arg) {
@@ -197,29 +184,31 @@ Player::~Player()
   }
 }
 
-void Player::play(const std::string& filename, Connector& connector)
+boost::optional<ControlMessage> Player::play(const std::string& filename, Connector& connector)
 {
-  FILE *in;
-  if((in = fopen(filename.c_str(), "rb")) == NULL) {
-    throw std::runtime_error("couldn't open file");
+  std::ifstream inf(filename);
+  if(inf.bad() || inf.fail()) {
+    throw std::runtime_error(formatMessage("Couldn't open file '", filename, "'"));
   }
 
   LOG("RUNNING");
+  LOG(filename.c_str());
 
   bool port_settings_changed = false;
   bool first_packet = true;
   bool running = true;  
   int data_len = 0;
   OMX_BUFFERHEADERTYPE *buf;
+  boost::optional<ControlMessage> lastMessage;
 
   _video_decode.changeState(OMX_StateExecuting);
 
   while(running && (buf = ilclient_get_input_buffer(_video_decode.component, 130, 1)) != NULL) {
-    running = check_messages(connector);
+    lastMessage = connector.message();
+    running = !lastMessage;
     // feed data and wait until we get port settings changed
-    unsigned char *dest = buf->pBuffer;
-    LOG("READ_DATA");
-    data_len += fread(dest, 1, buf->nAllocLen-data_len, in);
+    inf.read(reinterpret_cast<char*>(buf->pBuffer), buf->nAllocLen-data_len);
+    data_len += inf.gcount();
       
     if(!port_settings_changed &&
        ((data_len > 0 && ilclient_remove_event(_video_decode.component, OMX_EventPortSettingsChanged, 131, 0, 0, 1) == 0) ||
@@ -269,11 +258,12 @@ void Player::play(const std::string& filename, Connector& connector)
 	    _video_render.component, 
 	    OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
 	    ILCLIENT_BUFFER_FLAG_EOS, 100) != 0) {
-      running = check_messages(connector);
-      LOG("DURINGWAIT");
+    lastMessage = connector.message();
+    running = !lastMessage;
+    LOG("DURINGWAIT");
   }
   
   // need to flush the renderer to allow video_decode to disable its input port
   LOG("AFTERWAIT");
-  fclose(in);
+  return lastMessage;
 }

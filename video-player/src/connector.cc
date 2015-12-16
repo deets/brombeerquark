@@ -14,6 +14,30 @@ namespace {
       throw std::runtime_error(nn_strerror(error));
     }
   }
+
+  ControlMessage parseMessage(const char* buf, int len) {
+    std::string command;
+    std::string payload;
+    ControlMessage res;
+    int separator = 0;
+    for(;separator < len; separator++) {
+      if(buf[separator] == '=') {
+	break;
+      }
+    }
+    command = std::string(buf, separator);
+    separator += 1;
+    if(separator < len) {
+      payload = std::string(buf + separator, len - separator);
+    }
+    if(command == "quit") {
+      res.type = ControlMessage::Type::QUIT;
+    } else if(command == "play") {
+      res.type = ControlMessage::Type::PLAY;
+      res.payload = payload;
+    }
+    return res;
+  }
 }
 
 Connector::Connector(const std::string& uri) 
@@ -76,11 +100,7 @@ void Connector::work() {
       auto len = nn_recv(_socket, &buf, NN_MSG, 0);
       _running = false;
       if(len > 0) {
-
-	ControlMessage message;
-	message.type = ControlMessage::Type::QUIT;
-	setMessage(message);
-
+	setMessage(parseMessage(reinterpret_cast<const char*>(buf), len));
 	nn_freemsg(buf);
       }
     }

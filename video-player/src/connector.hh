@@ -32,4 +32,5 @@ private:
 
   boost::optional<ControlMessage> _message;
   std::mutex _messageMutex;
+
 };

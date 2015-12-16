@@ -1,9 +1,13 @@
 #pragma once
 
 #include "connector.hh"
+#include "messages.hh"
 
 #include "bcm_host.h"
 #include "ilclient.h"
+
+#include <boost/optional.hpp>
+
 
 struct IClientHelper {
   ILCLIENT_T *client;
@@ -35,7 +39,7 @@ class Player {
 public:
   Player();
   ~Player();
-  void play(const std::string& filename, Connector& connector);
+  boost::optional<ControlMessage> play(const std::string& filename, Connector& connector);
 
 private:
   IClientHelper _iclient;
