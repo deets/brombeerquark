@@ -38,6 +38,7 @@ add_executable(simple-videoplayer
    src/main.cc
    src/connector.cc
    src/log.cc
+   src/player.cc
 )
 
 
