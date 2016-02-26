@@ -8,6 +8,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <condition_variable>
 
 class Connector {
 
@@ -15,6 +16,7 @@ public:
   Connector(const std::string& uri);
   ~Connector();
 
+  ControlMessage waitForMessage();
   boost::optional<ControlMessage> message();
 
 private:
@@ -32,5 +34,5 @@ private:
 
   boost::optional<ControlMessage> _message;
   std::mutex _messageMutex;
-
+  std::condition_variable _messageSignal;
 };

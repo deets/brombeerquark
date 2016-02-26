@@ -6,11 +6,9 @@ import time
 socket = nanomsg.Socket(nanomsg.PAIR)
 socket.connect("ipc:///tmp/sv")
 
-if len(sys.argv) == 1:
-    message = "quit"
-else:
-    message = "play=%s" % os.path.normpath(os.path.expanduser(sys.argv[1]))
+command = sys.argv[1]
+payload = "=%s" % (sys.argv[2]) if len(sys.argv) == 3 else ""
 
-time.sleep(3.0)
+message = "%s%s" % (command, payload)
 print "sending", message
 socket.send(message)

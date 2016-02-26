@@ -7,7 +7,8 @@ struct ControlMessage {
     QUIT,
     PLAY,
     PAUSE,
-    CONTINUE
+    CONTINUE,
+    NOP
   };
 
   Type type;

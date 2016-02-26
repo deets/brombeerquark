@@ -184,7 +184,7 @@ Player::~Player()
   }
 }
 
-boost::optional<ControlMessage> Player::play(const std::string& filename, Connector& connector)
+ControlMessage Player::play(const std::string& filename, Connector& connector)
 {
   std::ifstream inf(filename);
   if(inf.bad() || inf.fail()) {
@@ -204,9 +204,10 @@ boost::optional<ControlMessage> Player::play(const std::string& filename, Connec
   _video_decode.changeState(OMX_StateExecuting);
 
   while(running && (buf = ilclient_get_input_buffer(_video_decode.component, 130, 1)) != NULL) {
-    lastMessage = connector.message();
+//    lastMessage = connector.message();
     running = !lastMessage;
     // feed data and wait until we get port settings changed
+    LOG("READ");
     inf.read(reinterpret_cast<char*>(buf->pBuffer), buf->nAllocLen-data_len);
     data_len += inf.gcount();
       
@@ -258,12 +259,18 @@ boost::optional<ControlMessage> Player::play(const std::string& filename, Connec
 	    _video_render.component, 
 	    OMX_EventBufferFlag, 90, 0, OMX_BUFFERFLAG_EOS, 0,
 	    ILCLIENT_BUFFER_FLAG_EOS, 100) != 0) {
-    lastMessage = connector.message();
+//    lastMessage = connector.message();
     running = !lastMessage;
     LOG("DURINGWAIT");
   }
   
   // need to flush the renderer to allow video_decode to disable its input port
   LOG("AFTERWAIT");
-  return lastMessage;
+  if(lastMessage) {
+    return *lastMessage;
+  } else {
+    ControlMessage res;
+    res.type = ControlMessage::Type::NOP;
+    return res;
+  }
 }

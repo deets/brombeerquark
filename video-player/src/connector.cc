@@ -1,4 +1,5 @@
 #include "connector.hh"
+#include "lock.hh"
 
 #include <nanomsg/nn.h>
 #include <nanomsg/pair.h>
@@ -82,9 +83,13 @@ boost::optional<ControlMessage> Connector::message() {
 }
 
 void Connector::setMessage(const ControlMessage& message) {
-  std::lock_guard<std::mutex> lock(_messageMutex);
-  _message = message;
+  {
+    std::lock_guard<std::mutex> lock(_messageMutex);
+    _message = message;
+  }
+  _messageSignal.notify_one();
 }
+
 
 void Connector::work() {
   struct nn_pollfd pollData;
@@ -105,4 +110,13 @@ void Connector::work() {
       }
     }
   }
+}
+
+ControlMessage Connector::waitForMessage() {
+  std::unique_lock<std::mutex> lock(_messageMutex);
+  _messageSignal.wait(lock);
+  auto result = *_message;
+  _message = boost::none;
+  lock.unlock();
+  return result;
 }
