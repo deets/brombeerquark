@@ -15,26 +15,39 @@ class GenericInput(object):
         return parser
 
 
-    def run(self, parser, frame_callback):
+    def run(self, parser, frame_callback, setup=None):
+        print "press ESC to quit!"
         opts = parser.parse_args()
+        capture = self.create_capture(opts)
+        setup_called = False
+
+        while True:
+            grabbed, frame = capture.read()
+            if not grabbed:
+                capture = self.create_capture(opts)
+                grabbed, frame = capture.read()
+                assert grabbed
+
+            if not setup_called:
+                setup_called = True
+                setup(opts, frame)
+            frame_callback(opts, frame)
+
+            k = cv2.waitKey(1) & 0xFF
+            if k == 27:
+                break
+
+
+    def create_capture(self, opts):
         if opts.movie is not None:
-            capture = cv2.VideoCapture(opts.movie)
+            return cv2.VideoCapture(opts.movie)
         elif opts.image is not None:
-            capture = self.single_image_capture(
+            return self.single_image_capture(
                 opts.image,
                 opts.image_fps,
             )
         else:
             raise Exception("no input data specified")
-        while True:
-            grabbed, frame = capture.read()
-            if not grabbed:
-                break
-            frame_callback(frame)
-
-            k = cv2.waitKey(1) & 0xFF
-            if k == 27:
-                break
 
 
     def single_image_capture(self, imagename, fps):
