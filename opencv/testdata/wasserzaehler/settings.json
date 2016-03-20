@@ -1,7 +1,1 @@
-{
-    "Slow": 0,
-    "Hhigh": 15,
-    "Hlow": 0, "Vhigh": 206, "height": 221, "width": 322, "Shigh": 199, "Vlow": 0, "top": 304, "left": 958,
-    "contourRadiusRatio": 0.15,
-    "blur": 3
-}
+{"Slow": 0, "Hhigh": 20, "Hlow": 0, "Vhigh": 255, "height": 232, "width": 376, "cmix": 0.093, "cH": 57, "Shigh": 255, "blur": 3, "Vlow": 0, "top": 277, "left": 943}

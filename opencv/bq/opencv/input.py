@@ -15,9 +15,13 @@ class GenericInput(object):
         return parser
 
 
-    def run(self, parser, frame_callback, setup=None):
+    def __init__(self, parser):
+        self.opts = parser.parse_args()
+
+
+    def run(self, frame_callback, setup=None):
         print "press ESC to quit!"
-        opts = parser.parse_args()
+        opts = self.opts
         capture = self.create_capture(opts)
         setup_called = False
 
