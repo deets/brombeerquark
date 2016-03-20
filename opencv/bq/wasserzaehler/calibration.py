@@ -11,6 +11,7 @@ from ..opencv import (
     create_hsv_preview,
     memoize,
     colorbar,
+    cv2_3,
 )
 
 SETTINGS = None
@@ -62,7 +63,7 @@ def process(opts, frame, s):
     upper = np.array([s.Hhigh, s.Shigh, s.Vhigh], dtype="uint8")
     roi = cv2.inRange(roi, lower, upper)
 
-    _, contours, _ = cv2.findContours(
+    _, contours, _ = cv2_3.findContours(
         roi.copy(), cv2.RETR_EXTERNAL,
         cv2.CHAIN_APPROX_SIMPLE
     )

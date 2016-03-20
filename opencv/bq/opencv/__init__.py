@@ -8,4 +8,6 @@ from .util import (
     colorbar,
 )
 
+from .cv23 import cv2_3
+
 from .input import GenericInput
