@@ -59,7 +59,6 @@ def process(opts, frame, s):
     if len(contours) > 0:
         cv2.drawContours(roi, contours, -1, PINK, 3)
         direction = find_arrow_direction(contours, roi, opts.scale)
-        direction =
 
     cv2.imshow("roi", roi)
 
@@ -77,73 +76,73 @@ def process(opts, frame, s):
     )
 
 
-def frame_callback(opts, frame):
-    s = get_settings()
+class Calibration(GenericInput):
 
-    process(opts, frame, s)
 
-    cv2.rectangle(
-        frame,
-        (s.left, s.top),
-        (s.left + s.width, s.top + s.height),
-        GREEN,
-        int(1.0 / opts.scale),
-    )
+    def frame_callback(self, frame):
+        opts = self.opts
+        s = get_settings()
 
-    if opts.scale is not None:
-        dim = (
-            int(frame.shape[1] * opts.scale),
-            int(frame.shape[0] * opts.scale)
+        process(opts, frame, s)
+
+        cv2.rectangle(
+            frame,
+            (s.left, s.top),
+            (s.left + s.width, s.top + s.height),
+            GREEN,
+            int(1.0 / opts.scale),
         )
-        frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
 
-    cv2.imshow("preview", frame)
+        if opts.scale is not None:
+            dim = (
+                int(frame.shape[1] * opts.scale),
+                int(frame.shape[0] * opts.scale)
+            )
+            frame = cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+
+        cv2.imshow("preview", frame)
 
 
-def setup(opts, frame, windowname="preview", minsize=20):
+    def setup(self, frame, windowname="preview", minsize=20):
+        cv2.namedWindow(windowname)
+        def nop(*_a):
+            pass
 
-    cv2.namedWindow(windowname)
-    def nop(*a):
-        pass
+        cv2.createTrackbar("cmix", windowname, 0, 1000, nop)
+        cv2.createTrackbar("cH", windowname, 0, 179, nop)
+        cv2.createTrackbar("Hhigh", windowname, 0, 179, nop)
+        cv2.createTrackbar("Hlow", windowname, 0, 179, nop)
+        cv2.createTrackbar("Shigh", windowname, 0, 255, nop)
+        cv2.createTrackbar("Slow", windowname, 0, 255, nop)
+        cv2.createTrackbar("Vhigh", windowname, 0, 255, nop)
+        cv2.createTrackbar("Vlow", windowname, 0, 255, nop)
+        cv2.createTrackbar("blur", windowname, 3, 5, nop)
+        cv2.createTrackbar("left", windowname, 0, frame.shape[1], nop)
+        cv2.createTrackbar("top", windowname, 0, frame.shape[0], nop)
+        cv2.createTrackbar("width", windowname, minsize, frame.shape[1] - minsize, nop)
+        cv2.createTrackbar("height", windowname, minsize, frame.shape[0] - minsize, nop)
 
-    cv2.createTrackbar("cmix", windowname, 0, 1000, nop)
-    cv2.createTrackbar("cH", windowname, 0, 179, nop)
-    cv2.createTrackbar("Hhigh", windowname, 0, 179, nop)
-    cv2.createTrackbar("Hlow", windowname, 0, 179, nop)
-    cv2.createTrackbar("Shigh", windowname, 0, 255, nop)
-    cv2.createTrackbar("Slow", windowname, 0, 255, nop)
-    cv2.createTrackbar("Vhigh", windowname, 0, 255, nop)
-    cv2.createTrackbar("Vlow", windowname, 0, 255, nop)
-    cv2.createTrackbar("blur", windowname, 3, 5, nop)
-    cv2.createTrackbar("left", windowname, 0, frame.shape[1], nop)
-    cv2.createTrackbar("top", windowname, 0, frame.shape[0], nop)
-    cv2.createTrackbar("width", windowname, minsize, frame.shape[1] - minsize, nop)
-    cv2.createTrackbar("height", windowname, minsize, frame.shape[0] - minsize, nop)
+
+    def augment_parser(self, parser):
+        parser.add_argument(
+            "--scale",
+            help="Scale down input - but just for displaying!",
+            type=float,
+        )
+        parser.add_argument(
+            "--settings",
+        )
 
 
 def calibration():
     global SETTINGS
 
-    parser = GenericInput.parser()
-    parser.add_argument(
-        "--scale",
-        help="Scale down input - but just for displaying!",
-        type=float,
-    )
-    parser.add_argument(
-        "--settings",
-    )
-
-    gi = GenericInput(parser)
+    gi = Calibration()
 
     if gi.opts.settings is not None:
         with open(gi.opts.settings) as inf:
             s = json.load(inf)
             SETTINGS = Bunch(**s)
 
-    gi.run(
-        frame_callback,
-        setup=setup,
-        )
-
+    gi.run()
     print json.dumps(get_settings().dict())

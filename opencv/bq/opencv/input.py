@@ -15,11 +15,17 @@ class GenericInput(object):
         return parser
 
 
-    def __init__(self, parser):
+    def __init__(self):
+        parser = self.parser()
+        self.augment_parser(parser)
         self.opts = parser.parse_args()
 
 
-    def run(self, frame_callback, setup=None):
+    def augment_parser(self, parser):
+        pass
+
+
+    def run(self):
         print "press ESC to quit!"
         opts = self.opts
         capture = self.create_capture(opts)
@@ -34,8 +40,8 @@ class GenericInput(object):
 
             if not setup_called:
                 setup_called = True
-                setup(opts, frame)
-            frame_callback(opts, frame)
+                self.setup(frame)
+            self.frame_callback(frame)
 
             k = cv2.waitKey(1) & 0xFF
             if k == 27:
@@ -69,3 +75,11 @@ class GenericInput(object):
                 self._timestamp = time.time()
                 return True, img
         return Capture()
+
+
+    def setup(self, frame):
+        raise NotImplementedError
+
+
+    def frame_callback(self, frame):
+        raise NotImplementedError
