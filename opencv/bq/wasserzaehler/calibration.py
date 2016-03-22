@@ -6,13 +6,18 @@ from ..opencv import (
     GenericInput,
     Bunch,
     GREEN,
-    YELLOW,
-    RED,
+    PINK,
     create_hsv_preview,
-    memoize,
     colorbar,
-    cv2_3,
 )
+
+from .base import (
+    create_color_corrected_roi,
+    filter_for_color_range,
+    find_contours,
+    find_arrow_direction,
+)
+
 
 SETTINGS = None
 
@@ -35,22 +40,8 @@ def get_settings(windowname="preview"):
     return Bunch(**d)
 
 
-@memoize
-def complementary_image(H, shape):
-    res = np.zeros(shape, dtype="uint8")
-    res[:,:,0] = H
-    res[:,:, 1:] = [255, 255]
-    return cv2.cvtColor(res, cv2.COLOR_HSV2BGR)
-
-
 def process(opts, frame, s):
-    roi = frame[s.top:s.top + s.height, s.left:s.left + s.width]
-
-    if s.cmix > 0:
-        comp_img = complementary_image(s.cH, roi.shape)
-        roi = cv2.addWeighted(roi, 1.0 - s.cmix, comp_img, s.cmix, 0)
-
-    roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+    roi = create_color_corrected_roi(frame, s)
 
     # create a preview with the percieved colors
     # to gauge the color-space filtering
@@ -59,53 +50,16 @@ def process(opts, frame, s):
         create_hsv_preview(roi),
     )
 
-    lower = np.array([s.Hlow, s.Slow, s.Vlow], dtype="uint8")
-    upper = np.array([s.Hhigh, s.Shigh, s.Vhigh], dtype="uint8")
-    roi = cv2.inRange(roi, lower, upper)
+    roi = filter_for_color_range(roi, s)
+    contours = find_contours(roi, s)
 
-    _, contours, _ = cv2_3.findContours(
-        roi.copy(), cv2.RETR_EXTERNAL,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    roi = cv2.GaussianBlur(roi, (s.blur, s.blur), 0)
+    # convert back for preview
     roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR)
 
     if len(contours) > 0:
-        cv2.drawContours(roi, contours, -1, (0, 255, 255), 3)
-        contours = [
-            # return ((cx, cy), radius)
-            (cv2.minEnclosingCircle(contour), contour)
-            for contour in contours
-        ]
-        # only take the biggest one, based on circle radius
-        contours.sort(key=lambda c: c[0][1])
-        ((ecx, ecy), radius), contour = contours[-1]
-        cv2.circle(
-            roi,
-            (int(ecx), int(ecy)),
-            int(radius),
-            RED,
-        )
-        M = cv2.moments(contour)
-
-        if M['m00']:
-            cx = int(M['m10']/M['m00'])
-            cy = int(M['m01']/M['m00'])
-            cv2.circle(
-                roi,
-                (cx, cy),
-                int(5 / opts.scale),
-                YELLOW,
-            )
-
-
-            cv2.line(
-                roi,
-                (cx, cy),
-                (int(ecx), int(ecy)),
-                (0, 255, 0), 2,
-            )
+        cv2.drawContours(roi, contours, -1, PINK, 3)
+        direction = find_arrow_direction(contours, roi, opts.scale)
+        direction =
 
     cv2.imshow("roi", roi)
 
