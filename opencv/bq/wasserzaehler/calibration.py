@@ -23,40 +23,24 @@ from .base import (
 )
 
 
-SETTINGS = None
 
-def get_settings(windowname="preview"):
-    if SETTINGS is not None:
-        return SETTINGS
+DEFAULT_SETTINGS = {
+    "Hhigh" : 0,
+    "Hlow" : 0,
+    "Shigh" : 0,
+    "Slow" : 0,
+    "Vhigh" : 0,
+    "Vlow" : 0,
+    "left" : 10,
+    "top" : 10,
+    "width" : 100,
+    "height" : 100,
+    "cH" : 0,
+    "blur" : 3,
+    "cmix" : 0,
+}
 
-    d = {}
-    for key in [
-            "Hhigh", "Hlow", "Shigh",
-            "Slow", "Vhigh", "Vlow",
-            "left", "top", "width",
-            "height", "cH", "blur",
-            ]:
-        d[key] = cv2.getTrackbarPos(key, windowname)
-
-    for key in ["cmix"]:
-        d[key] = cv2.getTrackbarPos(key, windowname) / 1000.0
-
-    return Bunch(**d)
-
-
-def propagate_settings(windowname="preview"):
-    for key in [
-            "Hhigh", "Hlow", "Shigh",
-            "Slow", "Vhigh", "Vlow",
-            "left", "top", "width",
-            "height", "cH", "blur",
-            ]:
-        value = getattr(SETTINGS, key)
-        cv2.setTrackbarPos(key, windowname, value)
-
-    for key in ["cmix"]:
-        value = getattr(SETTINGS, key)
-        cv2.setTrackbarPos(key, windowname, int(value * 1000))
+WINDOWNAME = "preview"
 
 
 class Calibration(GenericInput):
@@ -65,12 +49,55 @@ class Calibration(GenericInput):
         super(Calibration, self).__init__(*a, **k)
         self._revolution_filter = Atan2Monotizer() | RevolutionCounter()
 
+        cv2.namedWindow(WINDOWNAME)
+        self._settings = Bunch(**DEFAULT_SETTINGS)
+        if self.opts.settings is not None:
+            with open(self.opts.settings) as inf:
+                self._settings = Bunch(**json.load(inf))
+
+
+    def _propagate_settings(self):
+        for key in [
+                "Hhigh", "Hlow", "Shigh",
+                "Slow", "Vhigh", "Vlow",
+                "left", "top", "width",
+                "height", "cH", "blur",
+                ]:
+            value = getattr(self.settings, key)
+            cv2.setTrackbarPos(key, WINDOWNAME, value)
+
+        for key in ["cmix"]:
+            value = getattr(self.settings, key)
+            cv2.setTrackbarPos(key, WINDOWNAME, int(value * 1000))
+
+
+    def _update_settings(self, *_a):
+        d = {}
+        for key in [
+                "Hhigh", "Hlow", "Shigh",
+                "Slow", "Vhigh", "Vlow",
+                "left", "top", "width",
+                "height", "cH", "blur",
+                ]:
+            d[key] = cv2.getTrackbarPos(key, WINDOWNAME)
+
+        for key in ["cmix"]:
+            d[key] = cv2.getTrackbarPos(key, WINDOWNAME) / 1000.0
+
+        self._settings = Bunch(**d)
+
+
+    @property
+    def settings(self):
+        return self._settings
+
 
     def frame_callback(self, frame):
-        opts = self.opts
-        s = get_settings()
+        self._update_settings()
+        s = self.settings
 
-        self.process(frame, s)
+        opts = self.opts
+        self.process(frame)
 
         cv2.rectangle(
             frame,
@@ -90,27 +117,22 @@ class Calibration(GenericInput):
         cv2.imshow("preview", frame)
 
 
-    def setup(self, frame, windowname="preview", minsize=20):
-        cv2.namedWindow(windowname)
-        def nop(*_a):
-            pass
+    def setup(self, frame, minsize=20):
 
-        cv2.createTrackbar("cmix", windowname, 0, 1000, nop)
-        cv2.createTrackbar("cH", windowname, 0, 179, nop)
-        cv2.createTrackbar("Hhigh", windowname, 0, 179, nop)
-        cv2.createTrackbar("Hlow", windowname, 0, 179, nop)
-        cv2.createTrackbar("Shigh", windowname, 0, 255, nop)
-        cv2.createTrackbar("Slow", windowname, 0, 255, nop)
-        cv2.createTrackbar("Vhigh", windowname, 0, 255, nop)
-        cv2.createTrackbar("Vlow", windowname, 0, 255, nop)
-        cv2.createTrackbar("blur", windowname, 3, 5, nop)
-        cv2.createTrackbar("left", windowname, 0, frame.shape[1], nop)
-        cv2.createTrackbar("top", windowname, 0, frame.shape[0], nop)
-        cv2.createTrackbar("width", windowname, minsize, frame.shape[1] - minsize, nop)
-        cv2.createTrackbar("height", windowname, minsize, frame.shape[0] - minsize, nop)
-
-        if SETTINGS is not None:
-            propagate_settings()
+        cv2.createTrackbar("cmix", WINDOWNAME, 0, 1000, self._update_settings)
+        cv2.createTrackbar("cH", WINDOWNAME, 0, 179, self._update_settings)
+        cv2.createTrackbar("Hhigh", WINDOWNAME, 0, 179, self._update_settings)
+        cv2.createTrackbar("Hlow", WINDOWNAME, 0, 179, self._update_settings)
+        cv2.createTrackbar("Shigh", WINDOWNAME, 0, 255, self._update_settings)
+        cv2.createTrackbar("Slow", WINDOWNAME, 0, 255, self._update_settings)
+        cv2.createTrackbar("Vhigh", WINDOWNAME, 0, 255, self._update_settings)
+        cv2.createTrackbar("Vlow", WINDOWNAME, 0, 255, self._update_settings)
+        cv2.createTrackbar("blur", WINDOWNAME, 3, 5, self._update_settings)
+        cv2.createTrackbar("left", WINDOWNAME, 0, frame.shape[1], self._update_settings)
+        cv2.createTrackbar("top", WINDOWNAME, 0, frame.shape[0], self._update_settings)
+        cv2.createTrackbar("width", WINDOWNAME, minsize, frame.shape[1] - minsize, self._update_settings)
+        cv2.createTrackbar("height", WINDOWNAME, minsize, frame.shape[0] - minsize, self._update_settings)
+        self._propagate_settings()
 
 
     def augment_parser(self, parser):
@@ -124,7 +146,8 @@ class Calibration(GenericInput):
         )
 
 
-    def process(self, frame, s):
+    def process(self, frame):
+        s = self.settings
         opts = self.opts
         roi = create_color_corrected_roi(frame, s)
 
@@ -179,14 +202,7 @@ class Calibration(GenericInput):
         )
 
 def calibration():
-    global SETTINGS
-
     gi = Calibration()
 
-    if gi.opts.settings is not None:
-        with open(gi.opts.settings) as inf:
-            s = json.load(inf)
-            SETTINGS = Bunch(**s)
-
     gi.run()
-    print json.dumps(get_settings().dict())
+    print json.dumps(gi.settings.dict())
