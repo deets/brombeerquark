@@ -23,6 +23,13 @@ class Bunch(object):
         return self.__dict__
 
 
+    def __repr__(self):
+        return "<%s %r>" % (
+            self.__class__.__name__,
+            self.__dict__,
+        )
+
+
 def create_hsv_preview(img):
     """
     Takes an HSV-image, and returns
@@ -68,6 +75,11 @@ class RevolutionFilter(object):
 
             def feed(self, input_):
                 return right.feed(left.feed(input_))
+
+
+            def __getattr__(self, name):
+                return getattr(right, name)
+
 
         return Piped()
 

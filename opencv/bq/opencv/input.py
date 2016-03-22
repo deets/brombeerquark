@@ -78,8 +78,8 @@ class GenericInput(object):
 
 
     def setup(self, frame):
-        raise NotImplementedError
+        pass
 
 
     def frame_callback(self, frame):
-        raise NotImplementedError
+        pass
