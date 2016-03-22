@@ -1,5 +1,6 @@
 import math
 import unittest
+import random
 
 from bq.opencv import (
     memoize,
@@ -11,13 +12,14 @@ from bq.opencv import (
 class TestUtils(unittest.TestCase):
 
     @classmethod
-    def produce_rotationdata(cls, revolutions, steps_in_degrees):
+    def produce_rotationdata(cls, revolutions, steps_in_degrees, noise=0):
         revs = 0
         pos = 0
         while revs < revolutions:
             pos += steps_in_degrees
-            revs = abs(pos) // 360
-            rad = math.pi * float(pos) / 180.0
+            revs = abs(pos) / 360.0
+            n = 0 if noise == 0 else random.random() * noise - noise / 2.0
+            rad = math.pi * float(pos + n) / 180.0
             yield revs, math.atan2(math.sin(rad), math.cos(rad))
 
 
@@ -36,7 +38,7 @@ class TestUtils(unittest.TestCase):
     def test_revolution_counter_clockwise(self):
         counter = RevolutionCounter()
 
-        for revs, input_ in self.produce_rotationdata(3, -5):
+        for revs, input_ in self.produce_rotationdata(3.5, -5):
             counter.feed(input_)
 
         self.assertEqual(3, counter.revolutions)
@@ -44,7 +46,7 @@ class TestUtils(unittest.TestCase):
 
     def test_revolution_counter_counter_clockwise(self):
         counter = RevolutionCounter()
-        for revs, input_ in self.produce_rotationdata(3, 5):
+        for revs, input_ in self.produce_rotationdata(3.5, 5):
             counter.feed(input_)
 
         self.assertEqual(3, counter.revolutions)
@@ -78,3 +80,11 @@ class TestUtils(unittest.TestCase):
             # the complex wrap-around logic it
             # just checks that one value has been produced twice
             self.assertEqual(len(set(input_)) -1, len(set(output)))
+
+
+    def test_noisy_data_counts_revolutions(self):
+        counter = Atan2Monotizer() | RevolutionCounter()
+        for revs, input_ in self.produce_rotationdata(3.5, 5, 20):
+            revolutions = counter.feed(input_)
+
+        self.assertEqual(3, revolutions)

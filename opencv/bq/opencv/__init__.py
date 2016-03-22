@@ -4,6 +4,7 @@ from .util import (
     YELLOW,
     RED,
     PINK,
+    WHITE,
     create_hsv_preview,
     memoize,
     colorbar,

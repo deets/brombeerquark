@@ -20,7 +20,6 @@ def complementary_image(H, shape):
     return cv2.cvtColor(res, cv2.COLOR_HSV2BGR)
 
 
-
 def create_color_corrected_roi(frame, s):
     """
     Cuts out the ROI, and potentially blends

@@ -7,8 +7,12 @@ from ..opencv import (
     Bunch,
     GREEN,
     PINK,
+    WHITE,
+    RED,
     create_hsv_preview,
     colorbar,
+    Atan2Monotizer,
+    RevolutionCounter,
 )
 
 from .base import (
@@ -40,50 +44,33 @@ def get_settings(windowname="preview"):
     return Bunch(**d)
 
 
-def process(opts, frame, s):
-    roi = create_color_corrected_roi(frame, s)
+def propagate_settings(windowname="preview"):
+    for key in [
+            "Hhigh", "Hlow", "Shigh",
+            "Slow", "Vhigh", "Vlow",
+            "left", "top", "width",
+            "height", "cH", "blur",
+            ]:
+        value = getattr(SETTINGS, key)
+        cv2.setTrackbarPos(key, windowname, value)
 
-    # create a preview with the percieved colors
-    # to gauge the color-space filtering
-    cv2.imshow(
-        "hsvpreview",
-        create_hsv_preview(roi),
-    )
-
-    roi = filter_for_color_range(roi, s)
-    contours = find_contours(roi, s)
-
-    # convert back for preview
-    roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR)
-
-    if len(contours) > 0:
-        cv2.drawContours(roi, contours, -1, PINK, 3)
-        direction = find_arrow_direction(contours, roi, opts.scale)
-
-    cv2.imshow("roi", roi)
-
-    cbar = colorbar()
-    cbar[0,s.Hlow,:] = [255, 255, 255]
-    cbar[0,s.Hhigh,:] = [255, 255, 255]
-    cbar[0,s.cH,:] = [0, 0, 0]
-
-    colorbar_stretched = np.zeros((10, 180, 3), dtype="uint8")
-
-    for i in xrange(10):
-        colorbar_stretched[i,::] = cbar
-    cv2.imshow("colorbar",
-        colorbar_stretched,
-    )
+    for key in ["cmix"]:
+        value = getattr(SETTINGS, key)
+        cv2.setTrackbarPos(key, windowname, int(value * 1000))
 
 
 class Calibration(GenericInput):
+
+    def __init__(self, *a, **k):
+        super(Calibration, self).__init__(*a, **k)
+        self._revolution_filter = Atan2Monotizer() | RevolutionCounter()
 
 
     def frame_callback(self, frame):
         opts = self.opts
         s = get_settings()
 
-        process(opts, frame, s)
+        self.process(frame, s)
 
         cv2.rectangle(
             frame,
@@ -122,6 +109,9 @@ class Calibration(GenericInput):
         cv2.createTrackbar("width", windowname, minsize, frame.shape[1] - minsize, nop)
         cv2.createTrackbar("height", windowname, minsize, frame.shape[0] - minsize, nop)
 
+        if SETTINGS is not None:
+            propagate_settings()
+
 
     def augment_parser(self, parser):
         parser.add_argument(
@@ -133,6 +123,60 @@ class Calibration(GenericInput):
             "--settings",
         )
 
+
+    def process(self, frame, s):
+        opts = self.opts
+        roi = create_color_corrected_roi(frame, s)
+
+        # create a preview with the percieved colors
+        # to gauge the color-space filtering
+        cv2.imshow(
+            "hsvpreview",
+            create_hsv_preview(roi),
+        )
+
+        roi = filter_for_color_range(roi, s)
+        contours = find_contours(roi, s)
+
+        # convert back for preview
+        roi = cv2.cvtColor(roi, cv2.COLOR_GRAY2BGR)
+
+        if len(contours) > 0:
+            cv2.drawContours(roi, contours, -1, PINK, 3)
+            direction = find_arrow_direction(contours, roi, opts.scale)
+            text = "revs: %i" % self._revolution_filter.feed(direction)
+            cv2.putText(
+                roi,
+                text,
+                (20, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                RED,
+                3,
+            )
+            cv2.putText(
+                roi,
+                text,
+                (20, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                WHITE,
+            )
+
+        cv2.imshow("roi", roi)
+
+        cbar = colorbar()
+        cbar[0,s.Hlow,:] = [255, 255, 255]
+        cbar[0,s.Hhigh,:] = [255, 255, 255]
+        cbar[0,s.cH,:] = [0, 0, 0]
+
+        colorbar_stretched = np.zeros((10, 180, 3), dtype="uint8")
+
+        for i in xrange(10):
+            colorbar_stretched[i,::] = cbar
+        cv2.imshow("colorbar",
+            colorbar_stretched,
+        )
 
 def calibration():
     global SETTINGS

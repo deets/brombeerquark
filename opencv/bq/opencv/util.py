@@ -8,8 +8,10 @@ import numpy as np
 
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
-RED = (255, 0, 0)
+RED = (0, 0, 255)
 PINK = (0, 255, 255)
+WHITE = (255, 255, 255)
+
 
 class Bunch(object):
 
@@ -57,8 +59,20 @@ def colorbar():
     )
 
 
+class RevolutionFilter(object):
 
-class RevolutionCounter(object):
+    def __or__(self, other):
+        left = self
+        right = other
+        class Piped(RevolutionFilter):
+
+            def feed(self, input_):
+                return right.feed(left.feed(input_))
+
+        return Piped()
+
+
+class RevolutionCounter(RevolutionFilter):
     """
     A simple class to count revolutions
     based on input of a continuous, mononotic(!)
@@ -83,7 +97,6 @@ class RevolutionCounter(object):
             self._in_quadrant = True
         # we count when re-entering the quadrant
         if not self._in_quadrant and q == self._initial_quadrant:
-            self._initial_quadrant = True
             self._in_quadrant = True
             self.revolutions += 1
         elif self._in_quadrant and q != self._initial_quadrant:
@@ -103,7 +116,7 @@ class RevolutionCounter(object):
             return 2 if input_ < -math.pi / 2 else 3
 
 
-class Atan2Monotizer(object):
+class Atan2Monotizer(RevolutionFilter):
 
     def __init__(self, clockwise=True):
         self._last_input = None
