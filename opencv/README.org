@@ -1,0 +1,40 @@
+* OpenCV experiments
+
+These are a few simple OpenCV experiments
+
+** Wasserzaehler/Water counter
+
+An attempt at counting revolutions of a red hand on a water usage
+meter.
+
+*** TODO Setup
+
+Place the PI-Camera in front of the water usage meter. It should
+produce a clear image, without reflections over the red hand showing
+the liter count.
+
+*CURRENTLY THE PI CAMERA ISN'T SUPPORTED. OOPS*
+
+*** Calibration
+
+User the calibration-tool to create a working configuration. Invoke
+like this:
+
+#+begin_src bash
+$  wasserzaehler-calibration --movie testdata/wasserzaehler/wasserzaehler.mov  --scale .3 
+#+end_src
+
+The output is a JSON-configuration. To tweak an existing
+configuration, append 
+
+=--settings testdata/wasserzaehler/settings.json=
+
+*** Usage
+
+Just run 
+
+#+begin_src bash
+wasserzaehler --movie testdata/wasserzaehler/wasserzaehler.mov --settings testdata/wasserzaehler/settings.json
+#+end_src
+
+The output will be an increasing number of revolutions. If things are working.
