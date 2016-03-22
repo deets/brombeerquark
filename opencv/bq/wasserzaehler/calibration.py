@@ -74,6 +74,11 @@ class Calibration(Wasserzaehler):
         self._centroid = centroid
 
 
+    def run(self):
+        print "press ESC to quit!"
+        super(Calibration, self).run()
+
+
     def frame_callback(self, frame):
         self._update_settings()
         s = self.settings
@@ -162,6 +167,10 @@ class Calibration(Wasserzaehler):
         cv2.imshow("colorbar",
             colorbar_stretched,
         )
+
+        k = cv2.waitKey(1) & 0xFF
+        if k == 27:
+            self.stop()
 
 
     def setup(self, frame):

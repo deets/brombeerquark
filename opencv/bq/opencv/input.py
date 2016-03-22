@@ -19,6 +19,7 @@ class GenericInput(object):
         parser = self.parser()
         self.augment_parser(parser)
         self.opts = parser.parse_args()
+        self._running = True
 
 
     def augment_parser(self, parser):
@@ -26,12 +27,13 @@ class GenericInput(object):
 
 
     def run(self):
-        print "press ESC to quit!"
         opts = self.opts
         capture = self.create_capture(opts)
         setup_called = False
 
-        while True:
+        self._running = True
+
+        while self._running:
             grabbed, frame = capture.read()
             if not grabbed:
                 capture = self.create_capture(opts)
@@ -43,9 +45,9 @@ class GenericInput(object):
                 self.setup(frame)
             self.frame_callback(frame)
 
-            k = cv2.waitKey(1) & 0xFF
-            if k == 27:
-                break
+
+    def stop(self):
+        self._running = False
 
 
     def create_capture(self, opts):

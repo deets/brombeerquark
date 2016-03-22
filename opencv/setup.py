@@ -13,6 +13,7 @@ setup(
     entry_points={
         'console_scripts': [
             'wasserzaehler-calibration = bq.wasserzaehler:calibration',
+            'wasserzaehler = bq.wasserzaehler:wasserzaehler',
         ],
     },
 )

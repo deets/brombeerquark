@@ -86,6 +86,8 @@ class Wasserzaehler(GenericInput):
             with open(self.opts.settings) as inf:
                 self._settings = Bunch(**json.load(inf))
 
+        self._last_revolution = -1
+
 
     @property
     def revolutions(self):
@@ -122,6 +124,10 @@ class Wasserzaehler(GenericInput):
         if len(contours) > 0:
             direction = self.find_arrow_direction(contours)
             self._revolution_filter.feed(direction)
+
+        if self._last_revolution != self.revolutions:
+            self._last_revolution = self.revolutions
+            print self.revolutions
 
 
     def find_arrow_direction(self, contours):
@@ -167,3 +173,8 @@ class Wasserzaehler(GenericInput):
 
     def enclosing_circle_and_centroid(self, circle, centroid):
         pass
+
+
+def wasserzaehler():
+    gi = Wasserzaehler()
+    gi.run()
