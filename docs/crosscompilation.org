@@ -1,0 +1,131 @@
+#+TITLE:     crosscompilation.org
+#+AUTHOR:    Diez B. Roggisch
+#+EMAIL:     deets@web.de
+#+DATE:      2016-03-25 Fr
+#+DESCRIPTION:
+#+KEYWORDS:
+#+LANGUAGE:  en
+#+OPTIONS:   H:3 num:t toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:   
+#+LINK_HOME: 
+#+XSLT:
+* How to create and use a Cross-Compilation environment for the Rasppberry PI 2
+
+This guide is my log of how I created a cross-compilation toolchain
+for the PI2.
+
+Originally I wanted to make this work under OS X - but even though I
+followed various tutorials I never made it work - presumably because
+of some incompatibilities betweenn GCC and CLANG.
+
+Instead, I now work in a 64 Bit Ubuntu Linux VirtualBox. Probably
+neither the concrete version, nor the virtualisation matter for this.
+
+** TODO Setting up the environment
+
+All the following assumes a base-directory *RPIBASE*. This can be
+essentially anywhere - for me it is simply in =~/rpi-base=.
+
+I suggest setting this as an environment variable, at least while
+following this tutorial.
+
+#+begin_src bash
+$ export RPIBASE=<rpi-base-path>
+#+end_src
+
+Then you should be able to copy and paste the commands.
+
+** Building the compiler toolchain
+
+The `modern` way of building a cross-compiler these days seems to be
+the =crosstools-ng= package.
+
+I downloaded the at the time latest version - 1.22.0 - and extracted
+it from within *RPIBASE*. This should result in a subdirectory
+=crosstool-ng=.
+
+Change into that, and invoke
+
+#+begin_src bash
+$ cd $RPIBASE/crosstool-ng
+$ ./configure --prefix=$RPIBASE/ct-ng
+$ make
+$ make install
+#+end_src 
+
+This should produce a running =ct-ng= command in =$RPIBASE/ct-ng/bin=. 
+Add this path to *PATH*, and change into *RPIBASE*. 
+
+#+begin_src bash
+$ export PATH=$PATH:$RPIBASE/ct-ng/bin
+$ cd $RPIBASE
+#+end_src 
+
+By now, the Raspberry PI 2 toolchain is already a convenient
+pre-canned configuration - so I just selected that:
+
+#+begin_src bash
+$ ct-ng armv7-rpi2-linux-gnueabihf
+$ ct-ng build
+#+end_src 
+
+This should start building the toolchain. But where to?
+
+Well, as I didn't touch the configuration, it went to
+
+ =~/x-tools/armv7-rpi2-linux-gnueabihf/=
+
+I should have changed that to something within *RPIBASE*, and it's
+easy to do. Before invoking =ct-ng build=, you can re-configure the
+installation. 
+
+#+begin_src bash
+$ ct-ng menuconfig
+#+end_src 
+
+Then find `Paths and misc options`, and find
+=PREFIX_DIRECTORY=. Change this to your desired path. If you have the
+environment-variable set, =$RPIBASE/toolchaing= for example should
+work.
+
+For the rest of this document, I'll call the resulting
+output-directory *TOOLCHAIN*.
+
+Wherever you build to - be prepared to wait for quite a while. It took
+~2hours for me.
+
+** Building your first program
+
+Now it gets exciting. We built our obligatory hello-world program!
+
+Copy and paste the following source to a file =/tmp/test.c=
+
+#+begin_src c
+#include <stdio.h>
+
+int main(int argc, char**argv)
+{
+  printf("hello pi!\n");
+  return 0;
+}
+#+end_src
+
+
+To build, you need to put the *TOOLCHAIN/bin*
+into the path. And then built. So do
+
+
+#+begin_src bash
+$ export PATH=$PATH:$TOOLCHAIN/bin
+$ cd /tmp
+$ armv7-rpi2-linux-gnueabihf-gcc test.c -o test
+#+end_src 
+
+You should end up with a executable =test=. Copy it to your PI, run
+it - and it should print "hello world!".
+
+
