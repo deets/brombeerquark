@@ -14,6 +14,7 @@ INPUT_B = 11
 from tkgpiozero import PinFactory
 Device.pin_factory = PinFactory()
 Device.pin_factory.toggle_periodic(INPUT_A, 1.0)
+Device.pin_factory.toggle_periodic(INPUT_B, .3)
 
 
 class TkGpioZeroBridge:
@@ -64,7 +65,8 @@ def main():
     button_a = Button(INPUT_A)
     button_b = Button(INPUT_B)
     app = Application(root)
-
+    bridge.register_button(button_a, partial(app.set_text, "Button A"))
+    bridge.register_button(button_b, partial(app.set_text, "Button B"))
     root.mainloop()
 
 
