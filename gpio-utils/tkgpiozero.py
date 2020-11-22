@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Copyright: 2020, Diez B. Roggisch, Berlin . All rights reserved.
 import time
+import sched
 import threading
 import gpiozero.pins
 
@@ -51,6 +52,7 @@ class PinFactory(gpiozero.pins.Factory):
         super().__init__(*a, **k)
         self._pins = {}
         self._periodic_pins = []
+        self._scheduler = sched.scheduler()
         t = threading.Thread(target=self._drive_periodic_pins)
         t.daemon = True
         t.start()
@@ -67,11 +69,14 @@ class PinFactory(gpiozero.pins.Factory):
         return later - earlier
 
     def toggle_periodic(self, spec, timeout):
-        self._periodic_pins.append((spec, timeout))
+
+        def toggle_callback():
+            self._pins[spec].state = not self._pins[spec].state
+            self._scheduler.enter(timeout, 0, toggle_callback)
+
+        self._scheduler.enter(timeout, 0, toggle_callback)
 
     def _drive_periodic_pins(self):
         while True:
-            for spec, timeout in self._periodic_pins:
-                time.sleep(timeout)
-                if spec in self._pins:
-                    self._pins[spec].state = not self._pins[spec].state
+            self._scheduler.run()
+            time.sleep(.1)
