@@ -52,10 +52,7 @@ class PinFactory(gpiozero.pins.Factory):
         super().__init__(*a, **k)
         self._pins = {}
         self._periodic_pins = []
-        self._scheduler = sched.scheduler()
-        t = threading.Thread(target=self._drive_periodic_pins)
-        t.daemon = True
-        t.start()
+        self._scheduler = None
 
     def pin(self, spec):
         if spec not in self._pins:
@@ -68,10 +65,20 @@ class PinFactory(gpiozero.pins.Factory):
     def ticks_diff(self, later, earlier):
         return later - earlier
 
-    def toggle_periodic(self, spec, timeout):
+    def toggle_periodic(self, spec, timeout, bounces=0):
+        if self._scheduler is None:
+            self._scheduler = sched.scheduler()
+            t = threading.Thread(target=self._drive_periodic_pins)
+            t.daemon = True
+            t.start()
 
         def toggle_callback():
-            self._pins[spec].state = not self._pins[spec].state
+            # it might not yet be registered
+            if spec in self._pins:
+                for _ in range(bounces):
+                    self._pins[spec].state = not self._pins[spec].state
+                    self._pins[spec].state = not self._pins[spec].state
+                self._pins[spec].state = not self._pins[spec].state
             self._scheduler.enter(timeout, 0, toggle_callback)
 
         self._scheduler.enter(timeout, 0, toggle_callback)

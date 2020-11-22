@@ -3,7 +3,7 @@ import time
 from functools import partial
 import tkinter as tk
 from gpiozero import Device, Button, LED
-from collections import deque
+from collections import deque, Counter
 
 INPUT_A = 10
 INPUT_B = 11
@@ -49,14 +49,16 @@ class TkGpioZeroBridge:
 class Application:
 
     def __init__(self, root):
-        label = tk.Label(master=root, text="Threadmagie hier drunter:")
+        label = tk.Label(master=root, text="Button presses below:")
         label.pack()
         self._messages_from_automaton = tk.Label(master=root, text="")
         self._messages_from_automaton.pack()
         self._start = time.monotonic()
+        self._counter = Counter()
 
-    def set_text(self, text):
-        self._messages_from_automaton["text"] = text
+    def inc_text(self, text):
+        self._counter[text] += 1
+        self._messages_from_automaton["text"] = f"{text}:{self._counter[text]}"
 
 
 def main():
@@ -65,8 +67,8 @@ def main():
     button_a = Button(INPUT_A)
     button_b = Button(INPUT_B)
     app = Application(root)
-    bridge.register_button(button_a, partial(app.set_text, "Button A"))
-    bridge.register_button(button_b, partial(app.set_text, "Button B"))
+    bridge.register_button(button_a, partial(app.inc_text, "Button A"))
+    bridge.register_button(button_b, partial(app.inc_text, "Button B"))
     root.mainloop()
 
 
