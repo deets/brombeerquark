@@ -23,6 +23,10 @@ BUTTON_DEFINITIONS = {
     "number21": 21,
 }
 
+OUTPUT_DEFINITIONS = {
+    "number26": 26,
+}
+
 BOUNCE_TIME = .01
 
 
@@ -35,6 +39,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     CLIENTS = {}
 
+    def initialize(self, output_pins):
+        self._output_pins = output_pins
+
     def open(self, *args):
         self.id = self.get_argument("id")
         self.CLIENTS[self.id] = {
@@ -44,7 +51,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         }
 
     def on_message(self, message):
-        pass
+        message = json.loads(message)
+        for name, value in message.items():
+            if name in self._output_pins:
+                self._output_pins[name].value = value
 
     def on_close(self):
         if self.id in self.CLIENTS:
@@ -88,6 +98,14 @@ def reset_button_state(ioloop, button_state, buttons):
     )
 
 
+def setup_output_pins():
+    res = {}
+    for name, pin in OUTPUT_DEFINITIONS.items():
+        pin = gpiozero.LED(pin)
+        res[name] = pin
+    return res
+
+
 def main():
     parse_command_line()
 
@@ -99,10 +117,11 @@ def main():
         "static_path": os.path.join(os.path.dirname(__file__), "static"),
     }
 
+    output_pins = setup_output_pins()
     app = tornado.web.Application(
         [
             (r'/', IndexHandler),
-            (r'/ws', WebSocketHandler),
+            (r'/ws', WebSocketHandler, dict(output_pins=output_pins)),
         ],
         **settings
     )

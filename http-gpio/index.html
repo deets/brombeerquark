@@ -19,18 +19,23 @@
     <div id="number16" class="button off">number16</div>
     <div id="number20" class="button off">number20</div>
     <div id="number21" class="button off">number21</div>
-
+    <button id="number26">number26</button>
     <script>
-    setupWebsocket(function(message) {
-        console.log(message);
-        for(var key in message)
-        {
-            var container = $("#" + key);
-            console.log(container);
-            container.removeClass("on off");
-            container.addClass(message[key] ? "on" : "off");
-        }
-    })
+      var number26value = true;
+      var ws = setupWebsocket(function(message) {
+          console.log(message);
+          for(var key in message)
+          {
+              var container = $("#" + key);
+              console.log(container);
+              container.removeClass("on off");
+              container.addClass(message[key] ? "on" : "off");
+          }
+      })
+      $("#number26").click(function() {
+          ws.send(JSON.stringify({ "number26": number26value}));
+          number26value = !number26value;
+      });
     </script>
   </body>
 </html>

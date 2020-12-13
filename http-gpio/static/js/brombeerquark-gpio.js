@@ -14,4 +14,5 @@ function setupWebsocket(callback) {
     ws.onclose = function() {
         console.log("WS closed");
     };
+    return ws;
 }
