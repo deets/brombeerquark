@@ -2,6 +2,7 @@ import os
 from functools import partial
 import logging
 import json
+import datetime
 
 import tornado.ioloop
 import tornado.web
@@ -55,23 +56,36 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             client["write_message"](json.dumps(value))
 
 
-def button_callback(ioloop, name, button):
+def button_callback(ioloop, button_state, name, value):
+    button_state[name] = value
     ioloop.add_callback(
         partial(
             WebSocketHandler.dispatch,
-            {name: button.value}
+            {name: value}
         )
     )
 
 
-def setup_buttons(ioloop):
-    res = []
+def setup_buttons(ioloop, button_state):
+    res = {}
     for name, pin in BUTTON_DEFINITIONS.items():
         button = gpiozero.Button(pin, bounce_time=BOUNCE_TIME)
-        button.when_pressed = partial(button_callback, ioloop, name)
-        button.when_released = partial(button_callback, ioloop, name)
-        res.append(button)
+        callback = partial(button_callback, ioloop, button_state, name)
+        button.when_pressed = partial(callback, True)
+        button.when_released = partial(callback, False)
+        res[name] = button
     return res
+
+
+def reset_button_state(ioloop, button_state, buttons):
+    for name, button in buttons.items():
+        value = button.value
+        if name in button_state and button_state[name] != value:
+            button_callback(ioloop, button_state, name, value)
+    ioloop.add_timeout(
+        datetime.timedelta(seconds=BOUNCE_TIME * 10),
+        partial(reset_button_state, ioloop, button_state, buttons)
+    )
 
 
 def main():
@@ -94,8 +108,12 @@ def main():
     )
     app.listen(options.port)
     ioloop = tornado.ioloop.IOLoop.instance()
-
-    buttons = setup_buttons(ioloop)
+    button_state = {}
+    buttons = setup_buttons(ioloop, button_state)
+    ioloop.add_timeout(
+        datetime.timedelta(seconds=1),
+        partial(reset_button_state, ioloop, button_state, buttons)
+    )
     ioloop.start()
 
 
