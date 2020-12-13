@@ -1,0 +1,24 @@
+
+* Installation instructions
+
+After installing a Pi OS headless and setting it up for SSH access,
+the following commands are necessary:
+
+#+begin_src
+sudo apt-get install python3-gpiozero
+sudo apt-get install python3-pip
+pip3 install tornado # installs tornado 6.X
+#+end_src
+
+* Running the server
+
+A simple
+
+#+begin_src
+python3 server.py
+#+end_src
+
+from within this directory should suffice.
+
+Then visit =http://localhost:12345= and see how pressing the buttons
+affects the color of the rectangles.
