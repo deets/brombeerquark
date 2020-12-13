@@ -69,7 +69,7 @@ def button_callback(ioloop, button_state, name, value):
 def setup_buttons(ioloop, button_state):
     res = {}
     for name, pin in BUTTON_DEFINITIONS.items():
-        button = gpiozero.Button(pin, bounce_time=BOUNCE_TIME)
+        button = gpiozero.Button(pin, bounce_time=BOUNCE_TIME, pull_up=True)
         callback = partial(button_callback, ioloop, button_state, name)
         button.when_pressed = partial(callback, True)
         button.when_released = partial(callback, False)
