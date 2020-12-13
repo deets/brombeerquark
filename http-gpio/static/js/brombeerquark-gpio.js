@@ -6,8 +6,9 @@ function setupWebsocket(callback) {
     };
 
     ws.onmessage = function (evt) {
-        var received_msg = evt.data;
+        var received_msg = JSON.parse(evt.data);
         callback(received_msg);
+        
     };
 
     ws.onclose = function() {

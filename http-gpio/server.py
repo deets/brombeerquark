@@ -1,16 +1,28 @@
 import os
-import threading
-import time
 from functools import partial
 import logging
+import json
 
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
 
+import gpiozero
+
 from tornado.options import define, options, parse_command_line
 
 define("port", default=12345, help="run on the given port", type=int)
+
+
+# I suggest using better names here, such as
+# bathroom_light or trapdoor_release
+BUTTON_DEFINITIONS = {
+    "number20": 20,
+    "number16": 16,
+    "number21": 21,
+}
+
+BOUNCE_TIME = .01
 
 
 class IndexHandler(tornado.web.RequestHandler):
@@ -40,15 +52,26 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     @classmethod
     def dispatch(cls, value):
         for client in cls.CLIENTS.values():
-            client["write_message"](repr(value))
+            client["write_message"](json.dumps(value))
 
 
-def gpio_loop(ioloop):
-    value = True
-    while True:
-        time.sleep(1.0)
-        value = not value
-        ioloop.add_callback(partial(WebSocketHandler.dispatch, value))
+def button_callback(ioloop, name, button):
+    ioloop.add_callback(
+        partial(
+            WebSocketHandler.dispatch,
+            {name: button.value}
+        )
+    )
+
+
+def setup_buttons(ioloop):
+    res = []
+    for name, pin in BUTTON_DEFINITIONS.items():
+        button = gpiozero.Button(pin, bounce_time=BOUNCE_TIME)
+        button.when_pressed = partial(button_callback, ioloop, name)
+        button.when_released = partial(button_callback, ioloop, name)
+        res.append(button)
+    return res
 
 
 def main():
@@ -72,10 +95,7 @@ def main():
     app.listen(options.port)
     ioloop = tornado.ioloop.IOLoop.instance()
 
-    t = threading.Thread(target=gpio_loop, args=(ioloop,))
-    t.daemon = True
-    t.start()
-
+    buttons = setup_buttons(ioloop)
     ioloop.start()
 
 

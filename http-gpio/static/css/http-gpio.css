@@ -1,0 +1,12 @@
+div.button {
+    width: 200px;
+    height: 20px;
+}
+
+div.on {
+    background-color: green;
+}
+
+div.off {
+    background-color: red;
+}
