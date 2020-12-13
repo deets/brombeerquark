@@ -24,7 +24,8 @@ BUTTON_DEFINITIONS = {
 }
 
 OUTPUT_DEFINITIONS = {
-    "number26": 26,
+    "number26": (26, None),
+    "number19": (19, datetime.timedelta(seconds=.1)),
 }
 
 BOUNCE_TIME = .01
@@ -98,10 +99,37 @@ def reset_button_state(ioloop, button_state, buttons):
     )
 
 
-def setup_output_pins():
+class AutoTimetoutPin:
+
+    def __init__(self, ioloop, pin, timeout):
+        self._pin = gpiozero.LED(pin)
+        self._ioloop = ioloop
+        self._timeout = timeout
+
+    @property
+    def value(self):
+        return self._pin.value
+
+    @value.setter
+    def value(self, value):
+        self._pin.value = value
+        self._ioloop.add_timeout(
+            self._timeout,
+            self._reset,
+        )
+
+    def _reset(self):
+        self._pin.value = not self._pin.value
+
+
+def setup_output_pins(ioloop):
     res = {}
-    for name, pin in OUTPUT_DEFINITIONS.items():
-        pin = gpiozero.LED(pin)
+    for name, spec in OUTPUT_DEFINITIONS.items():
+        pin, timeout = spec
+        if timeout is None:
+            pin = gpiozero.LED(pin)
+        else:
+            pin = AutoTimetoutPin(ioloop, pin, timeout)
         res[name] = pin
     return res
 
@@ -117,7 +145,9 @@ def main():
         "static_path": os.path.join(os.path.dirname(__file__), "static"),
     }
 
-    output_pins = setup_output_pins()
+    ioloop = tornado.ioloop.IOLoop.instance()
+
+    output_pins = setup_output_pins(ioloop)
     app = tornado.web.Application(
         [
             (r'/', IndexHandler),
@@ -126,7 +156,6 @@ def main():
         **settings
     )
     app.listen(options.port)
-    ioloop = tornado.ioloop.IOLoop.instance()
     button_state = {}
     buttons = setup_buttons(ioloop, button_state)
     ioloop.add_timeout(

@@ -20,6 +20,7 @@
     <div id="number20" class="button off">number20</div>
     <div id="number21" class="button off">number21</div>
     <button id="number26">number26</button>
+    <button id="number19">number19</button>
     <script>
       var number26value = true;
       var ws = setupWebsocket(function(message) {
@@ -35,6 +36,11 @@
       $("#number26").click(function() {
           ws.send(JSON.stringify({ "number26": number26value}));
           number26value = !number26value;
+      });
+      $("#number19").click(function() {
+          // number19 is an auto-toggle pin, so it will fall  back
+          // after the defined timeout
+          ws.send(JSON.stringify({ "number19": true}));
       });
     </script>
   </body>
